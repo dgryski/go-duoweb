@@ -1,0 +1,5 @@
+Please run: 
+
+    curl -O https://raw.github.com/duosecurity/duo_python/master/js/Duo-Web-v1.bundled.min.js
+
+to download the required javascript file.
