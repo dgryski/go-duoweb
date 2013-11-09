@@ -11,9 +11,15 @@ import (
 	"time"
 )
 
-const duoPrefix = "TX"
-const appPrefix = "APP"
-const authPrefix = "AUTH"
+type prefix string
+
+const (
+	duoPrefix           prefix = "TX"
+	appPrefix                  = "APP"
+	authPrefix                 = "AUTH"
+	enrollPrefix               = "ENROLL"
+	enrollRequestPrefix        = "ENROLL_REQUEST"
+)
 
 const duoExpire = 300
 const appExpire = 3600
@@ -31,19 +37,19 @@ var ErrUnknown = errors.New("ERR|An unknown error has occurred.")
 // for mocking during tests
 var timeNow = time.Now
 
-func signVals(key, username, ikey, prefix string, expire int) string {
+func signVals(key, username, ikey string, reqPrefix prefix, expire int) string {
 
 	exp := timeNow().Add(time.Duration(expire) * time.Second)
 
 	val := username + "|" + ikey + "|" + strconv.Itoa(int(exp.Unix()))
-	cookie := prefix + "|" + base64.StdEncoding.EncodeToString([]byte(val))
+	cookie := string(reqPrefix) + "|" + base64.StdEncoding.EncodeToString([]byte(val))
 	h := hmac.New(sha1.New, []byte(key))
 	h.Write([]byte(cookie))
 	sig := h.Sum(nil)
 	return cookie + "|" + hex.EncodeToString(sig)
 }
 
-func parseVals(key, val, prefix string) string {
+func parseVals(key, val string, reqPrefix prefix) string {
 
 	ts := int(timeNow().Unix())
 
@@ -72,7 +78,7 @@ func parseVals(key, val, prefix string) string {
 		return ""
 	}
 
-	if prefix != vprefix {
+	if string(reqPrefix) != vprefix {
 		return ""
 	}
 
@@ -97,7 +103,16 @@ func parseVals(key, val, prefix string) string {
 	return username
 }
 
-func SignRequest(ikey, skey, akey, username string) (string, error) {
+func SignRequest(ikey, skey, akey string, username string) (string, error) {
+	return signRequest(ikey, skey, akey, duoPrefix, username)
+}
+
+func SignEnrollRequest(ikey, skey, akey string, username string) (string, error) {
+	return signRequest(ikey, skey, akey, enrollRequestPrefix, username)
+}
+
+func signRequest(ikey, skey, akey string, reqPrefix prefix, username string) (string, error) {
+
 	if username == "" {
 		return "", ErrUSER
 	}
@@ -114,13 +129,21 @@ func SignRequest(ikey, skey, akey, username string) (string, error) {
 		return "", ErrAKEY
 	}
 
-	duoSig := signVals(skey, username, ikey, duoPrefix, duoExpire)
+	duoSig := signVals(skey, username, ikey, reqPrefix, duoExpire)
 	appSig := signVals(akey, username, ikey, appPrefix, appExpire)
 
 	return duoSig + ":" + appSig, nil
 }
 
 func VerifyResponse(ikey, skey, akey, response string) string {
+	return verifyResponse(ikey, skey, akey, response, duoPrefix)
+}
+
+func VerifyEnrollResponse(ikey, skey, akey, response string) string {
+	return verifyResponse(ikey, skey, akey, response, enrollRequestPrefix)
+}
+
+func verifyResponse(ikey, skey, akey, response string, reqPrefix prefix) string {
 
 	sigs := strings.Split(response, ":")
 	if len(sigs) != 2 {
@@ -129,13 +152,13 @@ func VerifyResponse(ikey, skey, akey, response string) string {
 
 	authSig, appSig := sigs[0], sigs[1]
 
-	authUser := parseVals(skey, authSig, authPrefix)
+	user := parseVals(skey, authSig, reqPrefix)
 
 	appUser := parseVals(akey, appSig, appPrefix)
 
-	if authUser == "" || appUser == "" || authUser != appUser {
+	if user == "" || appUser == "" || user != appUser {
 		return ""
 	}
 
-	return authUser
+	return user
 }

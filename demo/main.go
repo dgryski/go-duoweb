@@ -45,7 +45,15 @@ func main() {
 				return
 			}
 
-			sigRequest, err := duoweb.SignRequest(cfg.Ikey, cfg.Skey, cfg.Akey, user)
+			var sigRequest string
+			var err error
+
+			if enroll := r.FormValue("enroll"); enroll == "1" {
+				sigRequest, err = duoweb.SignEnrollRequest(cfg.Ikey, cfg.Skey, cfg.Akey, user)
+			} else {
+				sigRequest, err = duoweb.SignRequest(cfg.Ikey, cfg.Skey, cfg.Akey, user)
+			}
+
 			if err != nil {
 				http.Error(w, "error processing request", http.StatusInternalServerError)
 			}
@@ -71,17 +79,28 @@ func main() {
 		sigResponse := strings.TrimSpace(r.FormValue("sig_response"))
 
 		username := duoweb.VerifyResponse(cfg.Ikey, cfg.Skey, cfg.Akey, sigResponse)
+		action := "authenticated"
 
 		if username == "" {
-			failTMPL.Execute(w, nil)
-			return
+			// try as enrollment request
+			username = duoweb.VerifyEnrollResponse(cfg.Ikey, cfg.Skey, cfg.Akey, sigResponse)
+
+			// nope ..
+			if username == "" {
+				failTMPL.Execute(w, nil)
+				return
+			}
+
+			action = "enrolled"
 		}
 
 		// success!
 		var tmplParams = struct {
-			User string
+			User   string
+			Action string
 		}{
-			User: username,
+			User:   username,
+			Action: action,
 		}
 
 		welcomeTMPL.Execute(w, tmplParams)
@@ -105,7 +124,7 @@ var getTMPL = template.Must(template.New("gettmpl").Parse(
 var welcomeTMPL = template.Must(template.New("welcome").Parse(
 	`<html><head></head>
 <body>
-{{ .User }} successfully logged-in.
+{{ .User }} successfully {{ .Action }} with Duo.
 </body>`))
 
 var failTMPL = template.Must(template.New("fail").Parse(
