@@ -136,7 +136,7 @@ func signRequest(ikey, skey, akey string, reqPrefix prefix, username string) (st
 }
 
 func VerifyResponse(ikey, skey, akey, response string) string {
-	return verifyResponse(ikey, skey, akey, response, duoPrefix)
+	return verifyResponse(ikey, skey, akey, response, authPrefix)
 }
 
 func VerifyEnrollResponse(ikey, skey, akey, response string) string {
