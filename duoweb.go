@@ -1,3 +1,4 @@
+// Package duoweb provides helper routines for authenticating with Duoweb 2FA
 package duoweb
 
 import (
@@ -28,10 +29,19 @@ const ikeyLen = 20
 const skeyLen = 40
 const akeyLen = 40
 
+// ErrUser is returned if the username is invalid
 var ErrUSER = errors.New("ERR|The username passed to sign_request() is invalid.")
+
+// ErrIKEY is returned if the integration key is invalid
 var ErrIKEY = errors.New("ERR|The Duo integration key passed to sign_request() is invalid.")
+
+// ErrSKEY is returned if the Duo secret key is invalid
 var ErrSKEY = errors.New("ERR|The Duo secret key passed to sign_request() is invalid.")
+
+// ErrAKEY is returned if the application secret key is invalid
 var ErrAKEY = errors.New("ERR|The application secret key passed to sign_request() must be at least 40 characters.")
+
+// ErrUnknown is returned if an unknown error occurs
 var ErrUnknown = errors.New("ERR|An unknown error has occurred.")
 
 // for mocking during tests
@@ -87,26 +97,28 @@ func parseVals(key, val string, reqPrefix prefix) string {
 		return ""
 	}
 
-	cookie_parts := strings.Split(string(decoded), "|")
+	cookieParts := strings.Split(string(decoded), "|")
 
-	username, _ /* ikey */, expire := cookie_parts[0], cookie_parts[1], cookie_parts[2]
+	username, _ /* ikey */, expire := cookieParts[0], cookieParts[1], cookieParts[2]
 
-	expire_ts, err := strconv.Atoi(expire)
+	expireTstamp, err := strconv.Atoi(expire)
 	if err != nil {
 		return ""
 	}
 
-	if ts >= expire_ts {
+	if ts >= expireTstamp {
 		return ""
 	}
 
 	return username
 }
 
+// SignRequest generates a signed request for Duo authentication.
 func SignRequest(ikey, skey, akey string, username string) (string, error) {
 	return signRequest(ikey, skey, akey, duoPrefix, username)
 }
 
+// SignEnrollRequest generates a signed enrollment request for Duo authentication.
 func SignEnrollRequest(ikey, skey, akey string, username string) (string, error) {
 	return signRequest(ikey, skey, akey, enrollRequestPrefix, username)
 }
@@ -135,10 +147,14 @@ func signRequest(ikey, skey, akey string, reqPrefix prefix, username string) (st
 	return duoSig + ":" + appSig, nil
 }
 
+// VerifyResponse validates the signed response returned from Duo.  Returns the
+// username of the authenticated user.
 func VerifyResponse(ikey, skey, akey, response string) string {
 	return verifyResponse(ikey, skey, akey, response, authPrefix)
 }
 
+// VerifyEnrollResponse validates the signed enrollment response returned from
+// Duo.  Returns the username of the authenticated user.
 func VerifyEnrollResponse(ikey, skey, akey, response string) string {
 	return verifyResponse(ikey, skey, akey, response, enrollRequestPrefix)
 }
