@@ -156,7 +156,7 @@ func VerifyResponse(ikey, skey, akey, response string) string {
 // VerifyEnrollResponse validates the signed enrollment response returned from
 // Duo.  Returns the username of the authenticated user.
 func VerifyEnrollResponse(ikey, skey, akey, response string) string {
-	return verifyResponse(ikey, skey, akey, response, enrollRequestPrefix)
+	return verifyResponse(ikey, skey, akey, response, enrollPrefix)
 }
 
 func verifyResponse(ikey, skey, akey, response string, reqPrefix prefix) string {
