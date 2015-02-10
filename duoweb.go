@@ -59,7 +59,7 @@ func signVals(key, username, ikey string, reqPrefix prefix, expire int) string {
 	return cookie + "|" + hex.EncodeToString(sig)
 }
 
-func parseVals(key, val string, reqPrefix prefix) string {
+func parseVals(key, val string, reqPrefix prefix, ikey string) string {
 
 	ts := int(timeNow().Unix())
 
@@ -98,8 +98,15 @@ func parseVals(key, val string, reqPrefix prefix) string {
 	}
 
 	cookieParts := strings.Split(string(decoded), "|")
+	if len(cookieParts) != 3 {
+		return ""
+	}
 
-	username, _ /* ikey */, expire := cookieParts[0], cookieParts[1], cookieParts[2]
+	username, u_ikey, expire := cookieParts[0], cookieParts[1], cookieParts[2]
+
+	if u_ikey != ikey {
+		return ""
+	}
 
 	expireTstamp, err := strconv.Atoi(expire)
 	if err != nil {
@@ -125,7 +132,7 @@ func SignEnrollRequest(ikey, skey, akey string, username string) (string, error)
 
 func signRequest(ikey, skey, akey string, reqPrefix prefix, username string) (string, error) {
 
-	if username == "" {
+	if username == "" || strings.IndexByte(username, '|') != -1 {
 		return "", ErrUSER
 	}
 
@@ -168,9 +175,9 @@ func verifyResponse(ikey, skey, akey, response string, reqPrefix prefix) string 
 
 	authSig, appSig := sigs[0], sigs[1]
 
-	user := parseVals(skey, authSig, reqPrefix)
+	user := parseVals(skey, authSig, reqPrefix, ikey)
 
-	appUser := parseVals(akey, appSig, appPrefix)
+	appUser := parseVals(akey, appSig, appPrefix, ikey)
 
 	if user == "" || appUser == "" || user != appUser {
 		return ""
