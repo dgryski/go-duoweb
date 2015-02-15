@@ -1,4 +1,4 @@
-// Package duoweb provides helper routines for authenticating with Duoweb 2FA
+// Package duoweb provides implements Duo Security's two-factor authentication for web applications
 package duoweb
 
 import (
