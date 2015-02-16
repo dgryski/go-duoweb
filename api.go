@@ -7,10 +7,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 type Client struct {
@@ -32,11 +35,19 @@ func NewClient(host, key, ikey string) *Client {
 
 }
 
+type Error struct {
+	Stat          string `mapstructure:"stat"`
+	Code          int    `mapstructure:"code"`
+	Message       string `mapstructure:"message"`
+	MessageDetail string `mapstructure:"message_detail"`
+}
+
+func (e *Error) Error() string {
+	return fmt.Sprintf("%s: %s", e.Message, e.MessageDetail)
+}
+
 type PingResponse struct {
-	Response struct {
-		Time int `json:"time"`
-	} `json:"response"`
-	Stat string `json:"stat"`
+	Time int
 }
 
 func (c *Client) Ping() (PingResponse, error) {
@@ -48,9 +59,7 @@ func (c *Client) Ping() (PingResponse, error) {
 	defer resp.Body.Close()
 
 	var js PingResponse
-
-	dec := json.NewDecoder(resp.Body)
-	err = dec.Decode(&js)
+	err = unpackResponse(resp.Body, &js)
 	return js, err
 }
 
@@ -58,86 +67,92 @@ func (c *Client) Check() (PingResponse, error) {
 
 	path := apiprefix + "/check"
 
-	req, err := http.NewRequest("GET", "https://"+c.Host+path, nil)
-	if err != nil {
-		return PingResponse{}, err
-	}
-
-	now := timeNow().Format(time.RFC1123Z)
-
-	req.Header.Add("Date", now)
-	req.Header.Add("Authorization", "Basic "+c.sign("GET", now, path, nil))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.sendRequest("GET", path, nil)
 	if err != nil {
 		return PingResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	var js PingResponse
-
-	dec := json.NewDecoder(resp.Body)
-	err = dec.Decode(&js)
+	err = unpackResponse(resp.Body, &js)
 	return js, err
+
 }
 
-func (c *Client) AuthPush(userid string) (map[string]interface{}, error) {
+func unpackResponse(r io.Reader, dst interface{}) error {
 
-	path := apiprefix + "/auth"
+	var m map[string]interface{}
 
-	req, err := http.NewRequest("POST", "https://"+c.Host+path, nil)
+	if err := json.NewDecoder(r).Decode(&m); err != nil {
+		return err
+	}
+
+	if m["stat"] == "FAIL" {
+		var e Error
+		mapstructure.Decode(m, &e)
+		return &e
+	}
+
+	return mapstructure.Decode(m["response"], dst)
+}
+
+func (c *Client) sendRequest(method, path string, params url.Values) (*http.Response, error) {
+
+	req, err := http.NewRequest(method, "https://"+c.Host+path, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	req.URL.RawQuery = params.Encode()
+
+	now := timeNow().Format(time.RFC1123Z)
+
+	req.Header.Add("Date", now)
+	req.Header.Add("Authorization", "Basic "+c.sign(method, now, path, params))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+type AuthResponse struct {
+	Result    string `mapstructure:"result"`
+	Status    string `mapstructure:"status"`
+	StatusMsg string `mapstructure:"status_msg"`
+}
+
+func (c *Client) AuthPush(userid string) (AuthResponse, error) {
+
+	path := apiprefix + "/auth"
 	params := url.Values{"user_id": []string{userid}, "factor": []string{"push"}, "device": []string{"auto"}}
-	req.URL.RawQuery = params.Encode()
 
-	now := timeNow().Format(time.RFC1123Z)
-
-	req.Header.Add("Date", now)
-	req.Header.Add("Authorization", "Basic "+c.sign("POST", now, path, params))
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.sendRequest("POST", path, params)
 	if err != nil {
-		return nil, err
+		return AuthResponse{}, err
 	}
 	defer resp.Body.Close()
 
-	js := make(map[string]interface{})
-
-	dec := json.NewDecoder(resp.Body)
-	err = dec.Decode(&js)
-	return js, err
+	var r AuthResponse
+	err = unpackResponse(resp.Body, &r)
+	return r, err
 }
 
-func (c *Client) AuthPasscode(userid, passcode string) (map[string]interface{}, error) {
+func (c *Client) AuthPasscode(userid, passcode string) (AuthResponse, error) {
 
 	path := apiprefix + "/auth"
-
-	req, err := http.NewRequest("POST", "https://"+c.Host+path, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	params := url.Values{"user_id": []string{userid}, "factor": []string{"passcode"}, "passcode": []string{passcode}}
-	req.URL.RawQuery = params.Encode()
 
-	now := timeNow().Format(time.RFC1123Z)
-
-	req.Header.Add("Date", now)
-	req.Header.Add("Authorization", "Basic "+c.sign("POST", now, path, params))
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.sendRequest("POST", path, params)
 	if err != nil {
-		return nil, err
+		return AuthResponse{}, err
 	}
 	defer resp.Body.Close()
 
-	js := make(map[string]interface{})
-
-	dec := json.NewDecoder(resp.Body)
-	err = dec.Decode(&js)
-	return js, err
+	var r AuthResponse
+	err = unpackResponse(resp.Body, &r)
+	return r, err
 }
 
 func (c *Client) sign(date, method, path string, params url.Values) string {
