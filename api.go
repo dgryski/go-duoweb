@@ -43,7 +43,10 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("%s: %s", e.Message, e.MessageDetail)
+	if e.MessageDetail != "" {
+		return fmt.Sprintf("%s: %s", e.Message, e.MessageDetail)
+	}
+	return e.Message
 }
 
 type PingResponse struct {
