@@ -124,12 +124,17 @@ type AuthResponse struct {
 	Result    string `mapstructure:"result"`
 	Status    string `mapstructure:"status"`
 	StatusMsg string `mapstructure:"status_msg"`
+	Txid      string `mapstsructure:"txid"`
 }
 
-func (c *Client) AuthPush(userid string) (AuthResponse, error) {
+func (c *Client) AuthPush(userid string, async bool) (AuthResponse, error) {
 
 	path := apiprefix + "/auth"
 	params := url.Values{"user_id": []string{userid}, "factor": []string{"push"}, "device": []string{"auto"}}
+
+	if async {
+		params["async"] = []string{"1"}
+	}
 
 	resp, err := c.sendRequest("POST", path, params)
 	if err != nil {
@@ -142,10 +147,14 @@ func (c *Client) AuthPush(userid string) (AuthResponse, error) {
 	return r, err
 }
 
-func (c *Client) AuthPasscode(userid, passcode string) (AuthResponse, error) {
+func (c *Client) AuthPasscode(userid, passcode string, async bool) (AuthResponse, error) {
 
 	path := apiprefix + "/auth"
 	params := url.Values{"user_id": []string{userid}, "factor": []string{"passcode"}, "passcode": []string{passcode}}
+
+	if async {
+		params["async"] = []string{"1"}
+	}
 
 	resp, err := c.sendRequest("POST", path, params)
 	if err != nil {
