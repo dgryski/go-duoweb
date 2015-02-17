@@ -158,6 +158,23 @@ func (c *Client) AuthPasscode(userid, passcode string) (AuthResponse, error) {
 	return r, err
 }
 
+func (c *Client) PollAuthStatus(txid string) (AuthResponse, error) {
+
+	path := apiprefix + "/auth_status"
+
+	params := url.Values{"txid": []string{txid}}
+
+	resp, err := c.sendRequest("GET", path, params)
+	if err != nil {
+		return AuthResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	var r AuthResponse
+	err = unpackResponse(resp.Body, &r)
+	return r, err
+}
+
 func (c *Client) sign(date, method, path string, params url.Values) string {
 
 	body := []string{method, date, c.Host, path, ""}
