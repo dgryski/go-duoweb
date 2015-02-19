@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -180,6 +181,58 @@ func (c *Client) PollAuthStatus(txid string) (AuthResponse, error) {
 	defer resp.Body.Close()
 
 	var r AuthResponse
+	err = unpackResponse(resp.Body, &r)
+	return r, err
+}
+
+type EnrollResponse struct {
+	ActivationBarcode string `mapstructure:"activation_barcode"`
+	ActivationCode    string `mapstructure:"activation_code"`
+	Expiration        int    `mapstructure:"expiration"`
+	UserId            string `mapstructure:"user_id"`
+	Username          string `mapstructure:"username"`
+}
+
+func (c *Client) Enroll(username string, validSeconds int) (EnrollResponse, error) {
+
+	path := apiprefix + "/enroll"
+
+	params := url.Values{}
+
+	if username != "" {
+		params["username"] = []string{username}
+	}
+
+	if validSeconds != 0 {
+		params["valid_secs"] = []string{strconv.Itoa(validSeconds)}
+	}
+
+	resp, err := c.sendRequest("POST", path, params)
+	if err != nil {
+		return EnrollResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	var r EnrollResponse
+	err = unpackResponse(resp.Body, &r)
+	return r, err
+}
+
+type EnrollStatusResponse string
+
+func (c *Client) PollEnrollStatus(userid, activationCode string) (EnrollStatusResponse, error) {
+
+	path := apiprefix + "/enroll_status"
+
+	params := url.Values{"user_id": []string{userid}, "activation_code": []string{activationCode}}
+
+	resp, err := c.sendRequest("POST", path, params)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var r EnrollStatusResponse
 	err = unpackResponse(resp.Body, &r)
 	return r, err
 }
