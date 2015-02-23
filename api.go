@@ -237,6 +237,36 @@ func (c *Client) PollEnrollStatus(userid, activationCode string) (EnrollStatusRe
 	return r, err
 }
 
+type PreauthResponse struct {
+	Result    string `mapstructure:"result"`
+	StatusMsg string `mapstructure:"status_msg"`
+	Devices   []struct {
+		Device       string   `mapstructure:"device"`
+		Type         string   `mapstructure:"type"`
+		Number       string   `mapstructure:"number"`
+		Name         string   `mapstructure:"name"`
+		Capabilities []string `mapstructure:"capabilities"`
+	} `mapstructure:"devices"`
+	EnrollPortalUrl string `mapstructure:"enroll_portal_url"`
+}
+
+func (c *Client) Preauth(userid string) (PreauthResponse, error) {
+
+	path := apiprefix + "/preauth"
+
+	params := url.Values{"user_id": []string{userid}}
+
+	resp, err := c.sendRequest("POST", path, params)
+	if err != nil {
+		return PreauthResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	var r PreauthResponse
+	err = unpackResponse(resp.Body, &r)
+	return r, err
+}
+
 func (c *Client) sign(date, method, path string, params url.Values) string {
 
 	body := []string{method, date, c.Host, path, ""}
