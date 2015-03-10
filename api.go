@@ -71,14 +71,8 @@ func (c *Client) Check() (PingResponse, error) {
 
 	path := apiprefix + "/check"
 
-	resp, err := c.sendRequest("GET", path, nil)
-	if err != nil {
-		return PingResponse{}, err
-	}
-	defer resp.Body.Close()
-
 	var js PingResponse
-	err = unpackResponse(resp.Body, &js)
+	err := c.sendRequest("GET", path, nil, &js)
 	return js, err
 
 }
@@ -100,11 +94,11 @@ func unpackResponse(r io.Reader, dst interface{}) error {
 	return mapstructure.Decode(m["response"], dst)
 }
 
-func (c *Client) sendRequest(method, path string, params url.Values) (*http.Response, error) {
+func (c *Client) sendRequest(method, path string, params url.Values, response interface{}) error {
 
 	req, err := http.NewRequest(method, "https://"+c.Host+path, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	req.URL.RawQuery = params.Encode()
@@ -115,10 +109,13 @@ func (c *Client) sendRequest(method, path string, params url.Values) (*http.Resp
 	req.Header.Add("Authorization", "Basic "+c.sign(method, now, path, params))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return resp, nil
+	defer resp.Body.Close()
+
+	err = unpackResponse(resp.Body, response)
+	return err
 }
 
 type AuthResponse struct {
@@ -137,14 +134,8 @@ func (c *Client) AuthPush(userid string, async bool) (AuthResponse, error) {
 		params["async"] = []string{"1"}
 	}
 
-	resp, err := c.sendRequest("POST", path, params)
-	if err != nil {
-		return AuthResponse{}, err
-	}
-	defer resp.Body.Close()
-
 	var r AuthResponse
-	err = unpackResponse(resp.Body, &r)
+	err := c.sendRequest("POST", path, params, &r)
 	return r, err
 }
 
@@ -157,14 +148,8 @@ func (c *Client) AuthPasscode(userid, passcode string, async bool) (AuthResponse
 		params["async"] = []string{"1"}
 	}
 
-	resp, err := c.sendRequest("POST", path, params)
-	if err != nil {
-		return AuthResponse{}, err
-	}
-	defer resp.Body.Close()
-
 	var r AuthResponse
-	err = unpackResponse(resp.Body, &r)
+	err := c.sendRequest("POST", path, params, &r)
 	return r, err
 }
 
@@ -174,14 +159,8 @@ func (c *Client) PollAuthStatus(txid string) (AuthResponse, error) {
 
 	params := url.Values{"txid": []string{txid}}
 
-	resp, err := c.sendRequest("GET", path, params)
-	if err != nil {
-		return AuthResponse{}, err
-	}
-	defer resp.Body.Close()
-
 	var r AuthResponse
-	err = unpackResponse(resp.Body, &r)
+	err := c.sendRequest("GET", path, params, &r)
 	return r, err
 }
 
@@ -207,14 +186,8 @@ func (c *Client) Enroll(username string, validSeconds int) (EnrollResponse, erro
 		params["valid_secs"] = []string{strconv.Itoa(validSeconds)}
 	}
 
-	resp, err := c.sendRequest("POST", path, params)
-	if err != nil {
-		return EnrollResponse{}, err
-	}
-	defer resp.Body.Close()
-
 	var r EnrollResponse
-	err = unpackResponse(resp.Body, &r)
+	err := c.sendRequest("POST", path, params, &r)
 	return r, err
 }
 
@@ -226,14 +199,8 @@ func (c *Client) PollEnrollStatus(userid, activationCode string) (EnrollStatusRe
 
 	params := url.Values{"user_id": []string{userid}, "activation_code": []string{activationCode}}
 
-	resp, err := c.sendRequest("POST", path, params)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
 	var r EnrollStatusResponse
-	err = unpackResponse(resp.Body, &r)
+	err := c.sendRequest("POST", path, params, &r)
 	return r, err
 }
 
@@ -256,14 +223,8 @@ func (c *Client) Preauth(userid string) (PreauthResponse, error) {
 
 	params := url.Values{"user_id": []string{userid}}
 
-	resp, err := c.sendRequest("POST", path, params)
-	if err != nil {
-		return PreauthResponse{}, err
-	}
-	defer resp.Body.Close()
-
 	var r PreauthResponse
-	err = unpackResponse(resp.Body, &r)
+	err := c.sendRequest("POST", path, params, &r)
 	return r, err
 }
 
