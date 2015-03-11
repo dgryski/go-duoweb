@@ -102,9 +102,9 @@ func parseVals(key, val string, reqPrefix prefix, ikey string) string {
 		return ""
 	}
 
-	username, u_ikey, expire := cookieParts[0], cookieParts[1], cookieParts[2]
+	username, uIkey, expire := cookieParts[0], cookieParts[1], cookieParts[2]
 
-	if u_ikey != ikey {
+	if uIkey != ikey {
 		return ""
 	}
 

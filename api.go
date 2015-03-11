@@ -17,6 +17,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+// Client is a Duo Security API client
 type Client struct {
 	Host string
 	Key  string
@@ -27,6 +28,7 @@ const (
 	apiprefix = "/auth/v2"
 )
 
+// NewClient returns a new API client with the given API host, key, and integration key
 func NewClient(host, key, ikey string) *Client {
 	return &Client{
 		Host: strings.ToLower(host),
@@ -36,6 +38,7 @@ func NewClient(host, key, ikey string) *Client {
 
 }
 
+// Error is an API endpoint error
 type Error struct {
 	Stat          string `mapstructure:"stat"`
 	Code          int    `mapstructure:"code"`
@@ -50,10 +53,12 @@ func (e *Error) Error() string {
 	return e.Message
 }
 
+// PingResponse is a response to a Ping request
 type PingResponse struct {
 	Time int
 }
 
+// Ping sends an Ping request without validation credentials
 func (c *Client) Ping() (PingResponse, error) {
 
 	resp, err := http.Get("https://" + c.Host + apiprefix + "/ping")
@@ -67,6 +72,7 @@ func (c *Client) Ping() (PingResponse, error) {
 	return js, err
 }
 
+// Check sends a ping response which validates the credentials
 func (c *Client) Check() (PingResponse, error) {
 
 	path := apiprefix + "/check"
@@ -118,6 +124,7 @@ func (c *Client) sendRequest(method, path string, params url.Values, response in
 	return err
 }
 
+// AuthResponse is a response to an Auth request
 type AuthResponse struct {
 	Result    string `mapstructure:"result"`
 	Status    string `mapstructure:"status"`
@@ -125,6 +132,7 @@ type AuthResponse struct {
 	Txid      string `mapstsructure:"txid"`
 }
 
+// AuthPush requests an authorization via mobile-push
 func (c *Client) AuthPush(userid string, async bool) (AuthResponse, error) {
 
 	path := apiprefix + "/auth"
@@ -139,6 +147,7 @@ func (c *Client) AuthPush(userid string, async bool) (AuthResponse, error) {
 	return r, err
 }
 
+// AuthPasscode reqeusts an authorization for the given passcode
 func (c *Client) AuthPasscode(userid, passcode string, async bool) (AuthResponse, error) {
 
 	path := apiprefix + "/auth"
@@ -153,6 +162,7 @@ func (c *Client) AuthPasscode(userid, passcode string, async bool) (AuthResponse
 	return r, err
 }
 
+// PollAuthStatus checks the status for the given authorization request.  It blocks until the status changes.
 func (c *Client) PollAuthStatus(txid string) (AuthResponse, error) {
 
 	path := apiprefix + "/auth_status"
@@ -164,14 +174,16 @@ func (c *Client) PollAuthStatus(txid string) (AuthResponse, error) {
 	return r, err
 }
 
+// EnrollResponse is a response for an enrollment request
 type EnrollResponse struct {
 	ActivationBarcode string `mapstructure:"activation_barcode"`
 	ActivationCode    string `mapstructure:"activation_code"`
 	Expiration        int    `mapstructure:"expiration"`
-	UserId            string `mapstructure:"user_id"`
+	UserID            string `mapstructure:"user_id"`
 	Username          string `mapstructure:"username"`
 }
 
+// Enroll asks to enroll the given username with a timeout of validSeconds
 func (c *Client) Enroll(username string, validSeconds int) (EnrollResponse, error) {
 
 	path := apiprefix + "/enroll"
@@ -191,8 +203,10 @@ func (c *Client) Enroll(username string, validSeconds int) (EnrollResponse, erro
 	return r, err
 }
 
+// EnrollStatusResponse is a response to an enrollment request
 type EnrollStatusResponse string
 
+// PollEnrollStatus checks the state of the enrollment for the given userid
 func (c *Client) PollEnrollStatus(userid, activationCode string) (EnrollStatusResponse, error) {
 
 	path := apiprefix + "/enroll_status"
@@ -204,6 +218,7 @@ func (c *Client) PollEnrollStatus(userid, activationCode string) (EnrollStatusRe
 	return r, err
 }
 
+// PreauthResponse is a response for a preauthorization request
 type PreauthResponse struct {
 	Result    string `mapstructure:"result"`
 	StatusMsg string `mapstructure:"status_msg"`
@@ -214,9 +229,10 @@ type PreauthResponse struct {
 		Name         string   `mapstructure:"name"`
 		Capabilities []string `mapstructure:"capabilities"`
 	} `mapstructure:"devices"`
-	EnrollPortalUrl string `mapstructure:"enroll_portal_url"`
+	EnrollPortalURL string `mapstructure:"enroll_portal_url"`
 }
 
+// Preauth sends a preauthorization request for the given userid
 func (c *Client) Preauth(userid string) (PreauthResponse, error) {
 
 	path := apiprefix + "/preauth"
