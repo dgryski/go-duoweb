@@ -20,7 +20,7 @@ import (
 // Client is a Duo Security API client
 type Client struct {
 	Host string
-	Key  string
+	SKey string
 	IKey string
 }
 
@@ -28,11 +28,11 @@ const (
 	apiprefix = "/auth/v2"
 )
 
-// NewClient returns a new API client with the given API host, key, and integration key
-func NewClient(host, key, ikey string) *Client {
+// NewClient returns a new API client with the given API host, secret key, and integration key
+func NewClient(host, skey, ikey string) *Client {
 	return &Client{
 		Host: strings.ToLower(host),
-		Key:  key,
+		SKey: skey,
 		IKey: ikey,
 	}
 
@@ -255,7 +255,7 @@ func (c *Client) sign(date, method, path string, params url.Values) string {
 
 	canon := strings.Join(body, "\n")
 
-	h := hmac.New(sha1.New, []byte(c.Key))
+	h := hmac.New(sha1.New, []byte(c.SKey))
 	h.Write([]byte(canon))
 
 	src := make([]byte, sha1.Size)
