@@ -1,0 +1,5 @@
+---
+ikey: duo_integration_key
+skey: duo_secrect_key
+akey: your_application_key # generate one with: openssl rand -hex 20
+host: duo_api_host

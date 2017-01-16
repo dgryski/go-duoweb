@@ -16,6 +16,7 @@ import (
 func main() {
 	port := flag.Int("p", 8080, "port to listen on")
 	cfgFile := flag.String("c", "keys.yml", "config file")
+	flag.Parse()
 
 	cfgData, err := ioutil.ReadFile(*cfgFile)
 	if err != nil {
@@ -113,13 +114,26 @@ func main() {
 
 var getTMPL = template.Must(template.New("gettmpl").Parse(
 	`<html><head></head>
-<body>
-    <script src='/static/Duo-Web-v1.bundled.min.js'></script>
-    <script>
-        Duo.init({'host':'{{ .Host }}', 'sig_request':'{{ .SigRequest }} '});
-    </script>
-    <iframe height='500' width='620' frameborder='0' id='duo_iframe' />
-</body>`))
+	<body>
+	<script src='/static/Duo-Web-v2.min.js'></script>
+		<script>
+			Duo.init({'host':'{{ .Host }}', 'sig_request':'{{ .SigRequest }} '});
+		</script>
+		<iframe id="duo_iframe"
+			data-host="{{ .Host }}"
+			data-sig-request="{{ .SigRequest }}">
+		</iframe>
+		<style>
+		#duo_iframe {
+			width: 100%;
+			min-width: 304px;
+			max-width: 620px;
+			height: 330px;
+			border: none;
+		}
+		</style>
+	</body>
+</html>`))
 
 var welcomeTMPL = template.Must(template.New("welcome").Parse(
 	`<html><head></head>
