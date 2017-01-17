@@ -1,6 +1,0 @@
-This program needs a "keys.yml" file with the following elements:
-
-ikey: your_duo_integration_key_here
-skey: your_duo_secret_key_here
-akey: your_application_secret_key_here
-host: your_duo_api_host_here
