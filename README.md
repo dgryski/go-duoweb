@@ -1,4 +1,6 @@
-# go-duoweb
+# You probably want to be running the official duo SDK instead: https://github.com/duosecurity/duo_api_golang
+
+## go-duoweb
 
 Duo Security two-factor authentication for Go web applications. It uses [Duo](https://duo.com)'s official JavaScript widget in an iframe, and a high-level API to authenticate users with Duo’s 2FA.
 
